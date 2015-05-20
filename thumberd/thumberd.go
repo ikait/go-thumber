@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pixiv/go-thumber/thumbnail"
+	"github.com/ikait/go-thumber/thumbnail"
 )
 
 var local = flag.String("local", "", "serve as webserver, example: 0.0.0.0:8000")

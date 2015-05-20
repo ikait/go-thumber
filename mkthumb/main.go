@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pixiv/go-thumber/thumbnail"
+	"github.com/ikait/go-thumber/thumbnail"
 )
 
 var params thumbnail.ThumbnailParameters

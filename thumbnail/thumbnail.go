@@ -6,8 +6,8 @@ import (
 	"io"
 	"math"
 
-	"github.com/pixiv/go-thumber/jpeg"
-	"github.com/pixiv/go-thumber/swscale"
+	"github.com/ikait/go-thumber/jpeg"
+	"github.com/ikait/go-thumber/swscale"
 )
 
 // ThumbnailParameters configures the thumbnailing process

@@ -30,18 +30,18 @@ Unsupported:
 ### Build
 
     $ sudo apt-get install libswscale-dev libjpeg-dev
-    $ mkdir -p "${GOPATH}/src/github.com/pixiv"
-    $ cd "${GOPATH}/src/github.com/pixiv"
+    $ mkdir -p "${GOPATH}/src/github.com/ikait"
+    $ cd "${GOPATH}/src/github.com/ikait"
     $ git clone <repo URL>
-    $ go install github.com/pixiv/go-thumber/thumberd
+    $ go install github.com/ikait/go-thumber/thumberd
 
 On hardened setups which default to PIC builds, the following flag is required:
 
-    $ go install -ldflags '-extldflags=-fno-PIC' github.com/pixiv/go-thumber/thumberd
+    $ go install -ldflags '-extldflags=-fno-PIC' github.com/ikait/go-thumber/thumberd
 
 And the versioning is possible on build-time.
 
-    $ go install -ldflags '-X main.version v1.3' github.com/pixiv/go-thumber/thumberd
+    $ go install -ldflags '-X main.version v1.3' github.com/ikait/go-thumber/thumberd
 
 ### Usage
 

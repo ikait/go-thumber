@@ -15,7 +15,7 @@ import (
 	"errors"
 	"unsafe"
 
-	"github.com/pixiv/go-thumber/jpeg"
+	"github.com/ikait/go-thumber/jpeg"
 )
 
 // Filter identifies which scaling (interpolation) filter to use
