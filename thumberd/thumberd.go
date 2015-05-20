@@ -13,19 +13,46 @@ import (
 	"sync/atomic"
 	"time"
 
+	"encoding/json"
+	//"io/ioutil"
+
 	"github.com/ikait/go-thumber/thumbnail"
 )
 
 var local = flag.String("local", "", "serve as webserver, example: 0.0.0.0:8000")
 var timeout = flag.Int("timeout", 3, "timeout for upstream HTTP requests, in seconds")
 var show_version = flag.Bool("version", false, "show version and exit")
+var faceapi_key = flag.String("key", "", "your face api subscription key, if use face recognition")
 
 var client http.Client
 
 var version string
+var isEnabledFaceApi bool = false
 
 const maxDimension = 65000
 const maxPixels = 10000000
+
+const faceApiUrl = "https://api.projectoxford.ai/face/v0/detections?analyzesAge=true&analyzesGender=true"
+
+type attributes struct {
+	Gender string
+	Age    int
+}
+
+type faceRectangle struct {
+	Top    int
+	Left   int
+	Width  int
+	Height int
+}
+
+type data struct {
+	FaceId        string
+	FaceRectangle faceRectangle
+	Attributes    attributes
+}
+
+type data_wrapper []data
 
 var http_stats struct {
 	received       int64
@@ -98,7 +125,7 @@ func thumbServer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		switch tup[0] {
-		case "w", "h", "q", "u", "a", "o":
+		case "w", "h", "q", "u", "a", "o", "f":
 			val, err := strconv.Atoi(tup[1])
 			if err != nil {
 				http.Error(w, "Invalid integer value for "+tup[0], http.StatusBadRequest)
@@ -118,6 +145,8 @@ func thumbServer(w http.ResponseWriter, r *http.Request) {
 				params.ForceAspect = val != 0
 			case "o":
 				params.Optimize = val != 0
+			case "f":
+				isEnabledFaceApi = val != 0
 			}
 		case "p":
 			val, err := strconv.ParseFloat(tup[1], 64)
@@ -150,7 +179,51 @@ func thumbServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	srcReader, err := client.Get("http://" + parts[1])
+	if isEnabledFaceApi {
+		w.Header().Set("X-Face-On", "1")
+		jsonString := "{\"url\": \"http://" + parts[1] + "\"}"
+		req, err := http.NewRequest("POST", faceApiUrl, strings.NewReader(jsonString))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Ocp-Apim-Subscription-Key", *faceapi_key)
+		res, err := http.DefaultClient.Do(req)
+
+		if err == nil {
+			w.Header().Set("X-Face-HTTP-Status", res.Status)
+			w.Header().Set("X-Face-HTTP-Status-Code", strconv.Itoa(res.StatusCode))
+			if res.StatusCode == http.StatusOK {
+				dec := json.NewDecoder(res.Body)
+				var d data_wrapper
+				dec.Decode(&d)
+				if len(d) != 0 {
+					data := d[0]
+					fmt.Printf("%+v\n", "http://"+parts[1])
+					fmt.Printf("%+v\n", data)
+
+					w.Header().Set("X-Face-Contains", "1")
+					w.Header().Set("X-Face-FaceRectangle-Top", strconv.Itoa(data.FaceRectangle.Top))
+					w.Header().Set("X-Face-FaceRectangle-Left", strconv.Itoa(data.FaceRectangle.Left))
+					w.Header().Set("X-Face-FaceRectangle-Width", strconv.Itoa(data.FaceRectangle.Width))
+					w.Header().Set("X-Face-FaceRectangle-Height", strconv.Itoa(data.FaceRectangle.Height))
+
+					w.Header().Set("X-Face-Attributes-Gender", data.Attributes.Gender)
+					w.Header().Set("X-Face-Attributes-Age", strconv.Itoa(data.Attributes.Age))
+				} else {
+					w.Header().Set("X-Face-On", "1")
+					w.Header().Set("X-Face-Contains", "0")
+				}
+
+			} else {
+
+			}
+		} else {
+			println("something wrong")
+		}
+		res.Body.Close()
+	} else {
+		w.Header().Set("X-Face-On", "0")
+	}
+
+	srcReader, err := http.DefaultClient.Get("http://" + parts[1])
 	if err != nil {
 		http.Error(w, "Upstream failed: "+err.Error(), http.StatusBadGateway)
 		atomic.AddInt64(&http_stats.upstream_error, 1)
@@ -172,6 +245,7 @@ func thumbServer(w http.ResponseWriter, r *http.Request) {
 			atomic.AddInt64(&http_stats.upstream_error, 1)
 			return
 		default:
+			println(srcReader.StatusCode)
 			http.Error(w, "Thumbnailing failed: "+err.Error(), http.StatusInternalServerError)
 			atomic.AddInt64(&http_stats.thumb_error, 1)
 			return
